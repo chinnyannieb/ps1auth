@@ -1,5 +1,6 @@
 from django.test import TestCase
 from .models import PS1User, PS1Group
+from .forms import SetPasswordForm
 from ldap3 import Server, Connection, SUBTREE, Tls, MODIFY_REPLACE, BASE, ALL_ATTRIBUTES
 from django.conf import settings
 from django.test import Client
@@ -40,6 +41,38 @@ class AccountTest(TestCase):
         result = c.login(username='testuser', password='WrongPassword1')
         self.assertFalse(result)
         PS1User.objects.delete_user(user)
+
+class PasswordTest(TestCase):
+
+    def setUp(self):
+        self.user = PS1User.objects.create_user("testuser", password="Garbage1",  email="foo@bar.com")
+
+    def tearDown(self):
+        PS1User.objects.delete_user(self.user)
+
+    def test_reset_valid_password(self):
+        data = {}
+        data['new_password1'] = "Garbage2"
+        data['new_password2'] = "Garbage2"
+        form = SetPasswordForm(self.user, data=data)
+        self.assertTrue(form.is_valid())
+
+    def test_reset_valid_password_mismatch(self):
+        data = {}
+        data['new_password1'] = "Garbage3"
+        data['new_password2'] = "Garbage4"
+        form = SetPasswordForm(self.user, data=data)
+        self.assertFalse(form.is_valid())
+
+    def test_reset_invalid_password(self):
+        data = {}
+        data['new_password1'] = "invalid"
+        data['new_password2'] = "invalid"
+        form = SetPasswordForm(self.user, data=data)
+        # samba will reject this password
+        self.assertFalse(form.is_valid())
+
+
 
 
 class GroupTest(TestCase):
